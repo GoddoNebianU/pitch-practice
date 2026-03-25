@@ -80,25 +80,14 @@ function splineInterpolate(points: { x: number; y: number }[], numPoints: number
 export default function FittingCurve({ accuracy }: FittingCurveProps) {
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstanceRef = useRef<Chart | null>(null);
+    const labelsRef = useRef<string[]>([]);
 
+    // 初始化图表（只执行一次）
     useEffect(() => {
-        if (!chartRef.current || accuracy.length === 0) return;
-
-        if (chartInstanceRef.current) {
-            chartInstanceRef.current.destroy();
-        }
+        if (!chartRef.current) return;
 
         const ctx = chartRef.current.getContext('2d');
         if (!ctx) return;
-
-        const labels = CDEFGAB.split('').slice(0, accuracy.length);
-        
-        const originalData = accuracy.map((acc, index) => ({
-            x: index,
-            y: acc
-        }));
-
-        const splinePoints = splineInterpolate(originalData, 100);
 
         chartInstanceRef.current = new Chart(ctx, {
             type: 'scatter',
@@ -106,7 +95,7 @@ export default function FittingCurve({ accuracy }: FittingCurveProps) {
                 datasets: [
                     {
                         label: '样条曲线',
-                        data: splinePoints,
+                        data: [],
                         borderColor: 'rgba(239, 68, 68, 1)',
                         backgroundColor: 'rgba(239, 68, 68, 0.1)',
                         borderWidth: 2,
@@ -117,7 +106,7 @@ export default function FittingCurve({ accuracy }: FittingCurveProps) {
                     },
                     {
                         label: '实际准确率',
-                        data: originalData,
+                        data: [],
                         backgroundColor: 'rgba(59, 130, 246, 0.8)',
                         borderColor: 'rgba(59, 130, 246, 1)',
                         pointRadius: 6,
@@ -130,6 +119,7 @@ export default function FittingCurve({ accuracy }: FittingCurveProps) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: false, // 禁用动画，防止跳动
                 plugins: {
                     title: {
                         display: true,
@@ -148,7 +138,7 @@ export default function FittingCurve({ accuracy }: FittingCurveProps) {
                                 const x = context.parsed.x;
                                 const y = context.parsed.y;
                                 if (y === null) return '';
-                                const note = x !== null && x >= 0 && x < labels.length ? labels[Math.round(x)] : '';
+                                const note = x !== null && x >= 0 && x < labelsRef.current.length ? labelsRef.current[Math.round(x)] : '';
                                 return `${note}: ${y.toFixed(2)}%`;
                             }
                         }
@@ -158,7 +148,7 @@ export default function FittingCurve({ accuracy }: FittingCurveProps) {
                     x: {
                         type: 'linear',
                         min: -0.5,
-                        max: accuracy.length - 0.5,
+                        max: 6.5,
                         title: {
                             display: true,
                             text: '音符'
@@ -167,8 +157,8 @@ export default function FittingCurve({ accuracy }: FittingCurveProps) {
                             stepSize: 1,
                             callback: function(value) {
                                 const idx = Math.round(value as number);
-                                if (idx >= 0 && idx < labels.length) {
-                                    return labels[idx];
+                                if (idx >= 0 && idx < labelsRef.current.length) {
+                                    return labelsRef.current[idx];
                                 }
                                 return null;
                             }
@@ -197,8 +187,36 @@ export default function FittingCurve({ accuracy }: FittingCurveProps) {
         return () => {
             if (chartInstanceRef.current) {
                 chartInstanceRef.current.destroy();
+                chartInstanceRef.current = null;
             }
         };
+    }, []);
+
+    // 数据更新（不重建图表）
+    useEffect(() => {
+        const chart = chartInstanceRef.current;
+        if (!chart || accuracy.length === 0) return;
+
+        const labels = CDEFGAB.split('').slice(0, accuracy.length);
+        labelsRef.current = labels;
+        
+        const originalData = accuracy.map((acc, index) => ({
+            x: index,
+            y: acc
+        }));
+
+        const splinePoints = splineInterpolate(originalData, 100);
+
+        // 更新数据
+        chart.data.datasets[0].data = splinePoints;
+        chart.data.datasets[1].data = originalData;
+        
+        // 更新 x 轴范围
+        if (chart.options.scales?.x) {
+            chart.options.scales.x.max = accuracy.length - 0.5;
+        }
+
+        chart.update('none'); // 'none' 模式不动画，立即更新
     }, [accuracy]);
 
     return (
