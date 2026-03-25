@@ -62,7 +62,7 @@ export const playRandomKey = async (ctx: AudioContext, callback: (key: PianoKey)
     const getOsc = () => {
         const osc = ctx.createOscillator();
         osc.connect(ctx.destination);
-        osc.type = "triangle";
+        osc.type = "sine";
         osc.onended = osc.disconnect;
         return osc;
     };
@@ -83,11 +83,9 @@ export const playRandomKey = async (ctx: AudioContext, callback: (key: PianoKey)
         await playKey(pitch, 2500 / range.length);
     }
 
-    const interval_ms = 100;
-    const play_ms = 300;
+    const interval_ms = 250;
+    const play_ms = 400;
 
-    await delay(interval_ms);
-    await playKey(root, play_ms);
     await delay(interval_ms);
     await playKey(root, play_ms);
     await delay(interval_ms);
