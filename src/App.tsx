@@ -6,6 +6,7 @@ import { playRandomKey } from './lib/audio';
 import { delay } from './lib/utils';
 import AccuracyForm from './components/AccuracyForm';
 import type { PianoKey } from './lib/piano';
+import FittingCurve from './components/FittingCurve';
 
 const CDEFGAB = "CDEFGAB";
 
@@ -71,7 +72,20 @@ function App() {
         <h1 className={cn(
           "text-4xl"
         )}>建立音感</h1>
+
+
+
+
+
         <AccuracyForm accuracy={accuracy} />
+        <FittingCurve accuracy={accuracy} />
+
+
+
+
+
+
+
         <button
           className={cn(
             "p-2 shadow rounded font-bold",
@@ -90,6 +104,12 @@ function App() {
           {started && <Pause /> || <Play />}
           <span>{started && "停" || "听"}</span>
         </button>
+
+
+
+
+
+
         {lastPitch.length > 0 && <p className={cn(
           ""
         )}>当前：<button className={cn(
@@ -100,6 +120,12 @@ function App() {
               (showAnswer && lastKey !== null) && lastKey.scientificName || "点击查看"
             }
           </button></p>}
+
+
+
+
+
+
         <div>
           <button
             className={cn(
