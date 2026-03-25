@@ -9,10 +9,10 @@ export default function AccuracyForm({
 }: AccuracyFormProps) {
     return (
         <div
-        className="w-40"
+            className="w-40"
         >正确率表格
             {accuracy.map((acc, index) => {
-                return <div key={index} className="border">{CDEFGAB[index]}{"-->"}{acc}%</div>;
+                return <div key={index} className="border">{CDEFGAB[index]}{"-->"}{acc.toFixed(2)}%</div>;
             })}
         </div>
     );

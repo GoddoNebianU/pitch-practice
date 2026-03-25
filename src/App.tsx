@@ -3,7 +3,7 @@ import { cn } from './lib/cn';
 import { useEffect, useRef, useState } from 'react';
 import { emaStep } from './lib/math';
 import { playRandomKey } from './lib/audio';
-import { delay } from './lib/delay';
+import { delay } from './lib/utils';
 import AccuracyForm from './components/AccuracyForm';
 import type { PianoKey } from './lib/piano';
 

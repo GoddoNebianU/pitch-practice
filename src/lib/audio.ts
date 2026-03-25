@@ -1,4 +1,4 @@
-import { delay } from "./delay";
+import { delay } from "./utils";
 import { PIANO_KEYS, type PianoKey } from "./piano";
 
 const range = (([start, end]: [string, string]) => {
@@ -62,7 +62,7 @@ export const playRandomKey = async (ctx: AudioContext, callback: (key: PianoKey)
     const getOsc = () => {
         const osc = ctx.createOscillator();
         osc.connect(ctx.destination);
-        osc.type = "sine";
+        osc.type = "triangle";
         osc.onended = osc.disconnect;
         return osc;
     };
@@ -80,7 +80,7 @@ export const playRandomKey = async (ctx: AudioContext, callback: (key: PianoKey)
     callback(findKey(range[index]));
 
     for (const pitch of range) {
-        await playKey(pitch, 1500 / range.length);
+        await playKey(pitch, 2500 / range.length);
     }
 
     const interval_ms = 100;
