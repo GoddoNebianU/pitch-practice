@@ -1,15 +1,22 @@
-import { Play } from 'lucide-react';
+import { Pause, Play } from 'lucide-react';
 import { cn } from './lib/cn';
 import { useEffect, useRef, useState } from 'react';
-import { PIANO_KEYS, type PianoKey } from './lib/piano';
-import { delay } from './lib/delay';
 import { emaStep } from './lib/math';
+import { playRandomKey } from './lib/audio';
+import { delay } from './lib/delay';
+import AccuracyForm from './components/AccuracyForm';
+import type { PianoKey } from './lib/piano';
+
+const CDEFGAB = "CDEFGAB";
 
 function App() {
   const ctxRef = useRef<null | AudioContext>(null);
-  const [accuracy, setAccuracy] = useState(-1);
+  const [accuracy, setAccuracy] = useState(Array.from({ length: 7 }).fill(-1) as number[]);
   const [lastPitch, setLastPitch] = useState("");
-  const [showBtns, setShowBtns] = useState(false);
+  const [lastKey, setLastKey] = useState<null | PianoKey>(null);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [started, setStarted] = useState(false);
+  const startedRef = useRef(false);
 
   useEffect(() => {
     ctxRef.current = new AudioContext();
@@ -19,70 +26,38 @@ function App() {
     };
   }, [ctxRef]);
 
-  const tmp_a = 5;
-  const pitches = PIANO_KEYS.filter(
-    key =>
-      // ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"].some(p => p === key.scientificName)
-      ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"]
-        .map(p => p.replace("5", (tmp_a + 1).toString()).replace("4", tmp_a.toString()))
-        .some(p => p === key.scientificName)
-  );
+  const onPlayClick = async () => {
+    if (!ctxRef.current) return;
+    if (!startedRef.current) return;
 
-  const calAccuracy = (bingo: boolean) => {
-    if (accuracy === -1) {
-      setAccuracy(bingo ? 100 : 0);
-    } else {
-      setAccuracy(emaStep(accuracy, bingo ? 100 : 0, 0.07));
-    }
-    setShowBtns(false);
+    await playRandomKey(ctxRef.current, (key) => {
+      setLastPitch(key.scientificName + " " + {
+        "C": "Do",
+        "D": "Re",
+        "E": "Mi",
+        "F": "Fa",
+        "G": "Sol",
+        "A": "La",
+        "B": "Si"
+      }[key.noteName]);
+      setLastKey(key);
+      setShowAnswer(false);
+    });
+    await delay(2000);
+    setShowAnswer(true);
+    setStarted(false);
   };
 
-  const playRandomKey = async () => {
-    const ctx = ctxRef.current;
-    if (!ctx) return;
+  const calAccuracy = (bingo: boolean) => {
+    if (!lastKey) return;
 
-    if (!showBtns) setShowBtns(true);
+    const index = CDEFGAB.indexOf(lastKey.noteName);
 
-    const getOsc = () => {
-      const osc = ctx.createOscillator();
-      osc.connect(ctx.destination);
-      osc.type = "sine";
-      return osc;
-    };
-    const playKey = async (k: PianoKey, ms: number) => {
-      const osc = getOsc();
-      osc.frequency.value = k.frequency;
-      osc.start();
-      await delay(ms);
-      osc.stop();
-    };
-
-    const index = Math.floor(Math.random() * 8);
-    setLastPitch(pitches[index].scientificName + " " + {
-      "C": "Do",
-      "D": "Re",
-      "E": "Mi",
-      "F": "Fa",
-      "G": "Sol",
-      "A": "La",
-      "B": "Si"
-    }[pitches[index].noteName] + " " + (index + 1));
-
-    for (const pitch of pitches) {
-      await playKey(pitch, 1500 / 8);
+    if (accuracy[index] === -1) {
+      setAccuracy(acc => acc.map((ac, i) => i === index ? bingo ? 100 : 0 : ac));
+    } else {
+      setAccuracy(acc => acc.map((ac, i) => i === index ? emaStep(ac, bingo ? 100 : 0, 0.07) : ac));
     }
-
-    const interval_ms = 200;
-    const play_ms = 400;
-
-    await delay(interval_ms);
-    await playKey(pitches[0], play_ms);
-    await delay(interval_ms);
-    await playKey(pitches[0], play_ms);
-    await delay(interval_ms);
-    await playKey(pitches[0], play_ms);
-    await delay(interval_ms);
-    await playKey(pitches[index], play_ms);
   };
 
   return (
@@ -96,28 +71,52 @@ function App() {
         <h1 className={cn(
           "text-4xl"
         )}>建立音感</h1>
-        正确率：{accuracy > 0 ? accuracy.toFixed(2) : "NaN"}%
+        <AccuracyForm accuracy={accuracy} />
         <button
           className={cn(
             "p-2 shadow rounded font-bold",
             "flex flex-row items-center justify-center"
           )}
-          onClick={playRandomKey}>
-          <Play /><span>听</span>
+          onClick={() => {
+            if (!started) {
+              setStarted(true);
+              startedRef.current = true;
+              onPlayClick();
+            } else {
+              setStarted(false);
+              startedRef.current = false;
+            }
+          }}>
+          {started && <Pause /> || <Play />}
+          <span>{started && "停" || "听"}</span>
         </button>
-        <p className={cn(
+        {lastPitch.length > 0 && <p className={cn(
           ""
-        )}>当前：<span className={cn(
-          "hover:bg-white",
-          "bg-black"
-        )}>{lastPitch}</span></p>
-        {showBtns && <div>
+        )}>当前：<button className={cn(
+          ""
+        )}
+          onClick={() => setShowAnswer(b => !b)}>
+            {
+              (showAnswer && lastKey !== null) && lastKey.scientificName || "点击查看"
+            }
+          </button></p>}
+        <div>
           <button
             className={cn(
               "p-2 shadow rounded font-bold",
               "flex flex-row items-center justify-center"
             )}
-            onClick={() => calAccuracy(true)}>
+            onClick={() => {
+              calAccuracy(true);
+              if (!started) {
+                setStarted(true);
+                startedRef.current = true;
+                onPlayClick();
+              } else {
+                setStarted(false);
+                startedRef.current = false;
+              }
+            }}>
             <span>听出来了</span>
           </button>
           <button
@@ -125,10 +124,20 @@ function App() {
               "p-2 shadow rounded font-bold",
               "flex flex-row items-center justify-center"
             )}
-            onClick={() => calAccuracy(false)}>
+            onClick={() => {
+              calAccuracy(false);
+              if (!started) {
+                setStarted(true);
+                startedRef.current = true;
+                onPlayClick();
+              } else {
+                setStarted(false);
+                startedRef.current = false;
+              }
+            }}>
             <span>没听出来</span>
           </button>
-        </div>}
+        </div>
       </div>
     </>
   );
